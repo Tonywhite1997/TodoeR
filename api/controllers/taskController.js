@@ -8,16 +8,15 @@ exports.createTask = catchAsync(async (req, res, next) => {
   const { id } = req.user;
   const user = await User.findById(id);
 
-  const task = await Task.create({
+  await Task.create({
     title: req.body.title,
     task: req.body.task,
     user: user._id,
   });
+  const latestTasks = await Task.find({ user: user._id });
   res.status(200).json({
     status: "success",
-    data: {
-      task,
-    },
+    tasks: latestTasks,
   });
 });
 
@@ -28,6 +27,7 @@ exports.getTasks = catchAsync(async (req, res, next) => {
     .sort()
     .pagination();
   const tasks = await features.query;
+
   res.status(200).json({
     status: "success",
     data: {
@@ -65,12 +65,11 @@ exports.updateTask = catchAsync(async (req, res, next) => {
   }
   task.title = title;
   task.task = newTask;
-  task.save();
+  await task.save();
+  const latestTasks = await Task.find({ user: req.user.id });
   res.status(200).json({
     status: "success",
-    data: {
-      task,
-    },
+    tasks: latestTasks,
   });
 });
 
@@ -83,11 +82,10 @@ exports.markComplete = catchAsync(async (req, res, next) => {
   task.isComplete = true;
   task.completedDate = Date.now();
   await task.save({ validateBeforeSave: false });
+  const latestTasks = await Task.find({ user: req.user.id });
   res.status(200).json({
     status: "success",
-    data: {
-      task,
-    },
+    tasks: latestTasks,
   });
 });
 
@@ -97,8 +95,10 @@ exports.deleteTask = catchAsync(async (req, res, next) => {
   if (!task) {
     return next(new appError("Task does not exist", 404));
   }
+  const latestTasks = await Task.find({ user: req.user.id });
   res.status(200).json({
     status: "success",
     message: "Task deleted sucessfully",
+    tasks: latestTasks,
   });
 });

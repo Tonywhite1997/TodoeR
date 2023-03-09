@@ -5,6 +5,7 @@ const User = require("../models/user");
 const ApiFeatures = require("../utils/apiFeatures");
 const appError = require("../utils/appError");
 const catchAsync = require("../utils/catchAsync");
+const path = require("path");
 
 const multerStorage = multer.memoryStorage();
 
@@ -12,55 +13,31 @@ const multerFilters = (req, file, cb) => {
   if (file.mimetype.startsWith("image")) {
     cb(null, true);
   } else {
-    cb(new appError("Only images are allowed", 400));
+    cb(new appError("Only images are allowed", 400), false);
   }
 };
 
 const upload = multer({ storage: multerStorage, fileFilter: multerFilters });
 
-exports.uploadPhotos = upload.fields([
-  { name: "photo", maxCount: 1 },
-  { name: "images", maxCount: 3 },
-]);
+// exports.uploadPhotos = upload.fields([
+//   { name: "photo", maxCount: 1 },
+//   { name: "images", maxCount: 3 },
+// ]);
+exports.uploadPhotos = upload.single("photo");
 
 exports.resizePhotos = catchAsync(async (req, res, next) => {
-  if (!req.files.photo || !req.files.images) return next();
-  // console.log(req.files);
-  req.body.photo = `user-${req.user.id}-${Date.now()}.jpg`;
-  await sharp(req.files.photo[0].buffer)
+  if (!req.file) return next();
+
+  req.file.filename = `user-${req.user.id}-${Date.now()}.jpg`;
+  await sharp(req.file.buffer)
     .resize(500, 500)
     .toFormat("jpeg")
     .jpeg({ quality: 90 })
-    .toFile(`public/img/${req.body.photo}`);
+    .toFile(`public/img/users/${req.file.filename}`);
 
-  req.body.images = [];
-  await Promise.all(
-    req.files.images.map(async (image, index) => {
-      req.body.images.push(
-        `user-${req.user.id}-${Date.now()}-${index + 1}.jpg`
-      );
-      await sharp(image.buffer)
-        .resize(500, 500)
-        .toFormat("jpeg")
-        .jpeg({ quality: 90 })
-        .toFile(`public/img/users/${req.body.images[index]}`);
-    })
-  );
-  // console.log(req.body.images);
   next();
 });
-// exports.uploadUserPhoto = upload.single("photo");
 
-// exports.resizeUserPhoto = (req, res, next) => {
-//   if (!req.file) next();
-//   req.file.filename = `user-${req.user.id}-${Date.now()}.jpeg`;
-//   sharp(req.file.buffer)
-//     .resize(500, 500)
-//     .toFormat("jpg")
-//     .jpeg({ quality: 90 })
-//     .toFile(`public/img/users/${req.file.filename}`);
-//   next();
-// };
 exports.getAllUsers = catchAsync(async (req, res, next) => {
   let features = new ApiFeatures(User.find(), req.query)
     .filter()
@@ -107,12 +84,12 @@ exports.updateMe = catchAsync(async (req, res, next) => {
   const { id } = req.user;
   // const { name } = req.body;
   const filteredBody = filteredObj(req.body, "name", "age");
-  if (req.files) {
-    filteredBody.photo = req.body.photo;
-    filteredBody.images = req.body.images;
+  if (req.file) {
+    filteredBody.photo = req.file.filename;
+    console.log(req.file.filename);
   }
 
-  const updatedUser = await User.findByIdAndUpdate(req.user.id, filteredBody, {
+  const updatedUser = await User.findByIdAndUpdate(id, filteredBody, {
     new: true,
     runValidators: true,
   });
@@ -128,14 +105,33 @@ exports.updateMe = catchAsync(async (req, res, next) => {
   });
 });
 
+exports.updateUser = catchAsync(async (req, res, next) => {
+  const { id } = req.params;
+  const user = await User.findById(id);
+  if (!user) return next(new appError("user not found", 404));
+  user.name = req.body.name;
+  user.age = req.body.age;
+  user.role = req.body.role;
+  user.isActive = req.body.isActive;
+  const updatedUser = await user.save({ validateBeforeSave: false });
+  res.status(200).json({
+    status: "success",
+    data: {
+      user: updatedUser,
+    },
+  });
+});
+
 exports.deleteUser = catchAsync(async (req, res, next) => {
   const { id } = req.params;
   const user = await User.findByIdAndDelete(id);
   if (!user) {
     return next(new appError("This User does not exist", 404));
   }
-  res.status(204).json({
+  const latestUsers = await User.find({ role: { $ne: "admin" } });
+  res.status(200).json({
     status: "success",
+    users: latestUsers,
   });
 });
 
@@ -180,4 +176,11 @@ exports.getMe = catchAsync(async (req, res, next) => {
       user: me,
     },
   });
+});
+
+exports.getImage = catchAsync(async (req, res, next) => {
+  const { filename } = req.params;
+  if (!filename) return next(new appError("Invalid filename", 404));
+  const file = path.join(__dirname, "../public/img/users", filename);
+  res.sendFile(file);
 });

@@ -3,7 +3,7 @@ const jwt = require("jsonwebtoken");
 const appError = require("../utils/appError");
 const catchAsync = require("../utils/catchAsync");
 const User = require("../models/user");
-const sendMail = require("../utils/email");
+const Email = require("../utils/email");
 const crypto = require("crypto");
 const AppError = require("../utils/appError");
 
@@ -16,21 +16,18 @@ const getJWTToken = (userId) => {
 
 const cookieOptions = {
   maxAge: 90 * 24 * 60 * 60 * 1000,
-  HttpOnly: true,
-  secure: false,
+  httpOnly: true,
 };
 
 const createSendToken = (user, res, statusCode) => {
   const token = getJWTToken(user._id);
-  // if (process.env.NODE_ENV === "production") cookieOptions.secure = true;
-  res.cookie("jwt", token, cookieOptions);
+  if (process.env.NODE_ENV === "production") cookieOptions.secure = true;
+  res.cookie("jwtToken", token, cookieOptions);
 
   res.status(statusCode).json({
     status: "success",
     token,
-    data: {
-      user,
-    },
+    user,
   });
 };
 
@@ -47,6 +44,12 @@ exports.signUp = catchAsync(async (req, res, next) => {
     changedPasswordAt,
   });
   user.password = undefined;
+
+  // const url = `${req.protocol}://${req.get("host")}/login`;
+  // console.log(url);
+  const url = `http://localhost:3000`;
+
+  await new Email(user, url).sendWelcome();
 
   createSendToken(user, res, 201);
 });
@@ -112,7 +115,7 @@ exports.protect = catchAsync(async (req, res, next) => {
   ) {
     token = req.headers.authorization.split(" ")[1];
   } else {
-    token = req.cookies.jwt;
+    token = req.cookies.jwtToken;
   }
   if (!token) {
     return next(new appError("Please login to continue", 404));
@@ -167,6 +170,7 @@ exports.checkIfActive = catchAsync(async (req, res, next) => {
 
 exports.forgotPassword = catchAsync(async (req, res, next) => {
   const { email } = req.body;
+  console.log(email);
   if (!email) {
     return next(new appError("Please enter your email", 403));
   }
@@ -177,35 +181,26 @@ exports.forgotPassword = catchAsync(async (req, res, next) => {
   const resetToken = user.createPasswordResetToken();
   await user.save({ validateBeforeSave: false });
 
-  const resetUrl = `${req.protocol}//${req.get(
-    "host"
-  )}/api/v1/users/resetPassword/${resetToken}`;
-  const message = `Forgot your password? submit a new password to ${resetUrl}. Please ignore this message if you did not forget your password`;
-  try {
-    await sendMail({
-      message: message,
-      email: user.email,
-      subject: "ToDO App reset token",
-    });
-    res.status(200).json({
-      status: "success",
-      message: "Token sent to email",
-    });
-  } catch (error) {
-    user.passwordResetToken = undefined;
-    user.resetTokenExpiresIn = undefined;
-    user.save({ validateBeforeSave: false });
-    return next(
-      new appError(
-        "There was a problem sending mail to your provided email",
-        401
-      )
-    );
-  }
+  // const resetUrl = `${req.protocol}//${req.get(
+  //   "host"
+  // )}/api/v1/users/resetPassword/${resetToken}`;
+
+  const resetUrl = `http://localhost:3000/reset-password?resetToken=${resetToken}`;
+
+  await new Email(user, resetUrl).forgotPassword();
+
+  res.status(200).json({
+    status: "success",
+    message: "Token sent to email",
+  });
 });
 
 exports.resetPassword = catchAsync(async (req, res, next) => {
-  const { resetToken } = req.params;
+  const { resetToken } = req.query;
+
+  if (!resetToken) {
+    return next(new appError("Invalid token or expired token", 403));
+  }
 
   const hashedResetToken = crypto
     .createHash("sha256")
@@ -262,19 +257,31 @@ exports.updatePassword = catchAsync(async (req, res, next) => {
   });
 });
 
-exports.checkIfLoggedIn = (req, res, next) => {
-  const { jwt } = req.cookies;
-  if (!jwt) {
+exports.checkIfLoggedIn = async (req, res, next) => {
+  const token = req.cookies.jwtToken;
+  if (!token) {
     return next();
   }
-  res.json({ token: jwt });
+  const decoded = await promisify(jwt.verify)(token, process.env.JWT_SECRET);
+  if (!decoded) {
+    return next();
+  }
+  const user = await User.findById(decoded.userId);
+  if (!user) {
+    return next();
+  }
+
+  res.status(200).json({
+    status: "success",
+    user,
+  });
   next();
 };
 
 exports.logout = (req, res, next) => {
-  const cookieOptions = { httpOnly: true, maxAge: 10 * 1000 };
+  const cookieOptions = { httpOnly: true, maxAge: 100 };
   if (process.env.NODE_ENV === "production") cookieOptions.secure = true;
-  res.cookie("jwt", req.user.id, cookieOptions);
+  res.cookie("jwtToken", "jwjdsd-wdjbsfj-njdsbc", cookieOptions);
 
   res.status(200).json({
     status: "success",

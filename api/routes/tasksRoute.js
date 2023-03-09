@@ -17,6 +17,6 @@ router
   .patch(tasksController.updateTask)
   .delete(tasksController.deleteTask);
 
-router.route("/:id/markComplete").patch(tasksController.markComplete);
+router.patch("/:id/markComplete", tasksController.markComplete);
 
 module.exports = router;

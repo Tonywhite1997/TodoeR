@@ -8,14 +8,16 @@ router.post("/signup", authController.signUp);
 router.post("/login", authController.login);
 router.get("/profile", authController.checkIfLoggedIn);
 router.post("/forgotPassword", authController.forgotPassword);
-router.patch("/resetPassword/:resetToken", authController.resetPassword);
+router.patch("/resetPassword", authController.resetPassword);
 
 //User must log in to access the routes below
 
 router.use(authController.protect);
 
+router.get("/logout", authController.logout);
 router.patch("/updatePassword", authController.updatePassword);
 router.patch("/deleteMe", userController.deleteMe);
+router.get("/picture/:filename", userController.getImage);
 router.patch(
   "/updateMe",
   userController.uploadPhotos,
@@ -23,7 +25,6 @@ router.patch(
   userController.updateMe
 );
 router.get("/getMe", userController.getMe);
-router.get("/logout", authController.logout);
 
 router
   .route("/")
@@ -32,6 +33,7 @@ router
 router
   .route("/:id")
   .get(userController.getUser)
-  .delete(authController.restrictTo("admin"), userController.deleteUser);
+  .delete(authController.restrictTo("admin"), userController.deleteUser)
+  .patch(authController.restrictTo("admin"), userController.updateUser);
 
 module.exports = router;

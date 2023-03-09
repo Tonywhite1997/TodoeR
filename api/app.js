@@ -17,7 +17,7 @@ const app = express();
 app.use(helmet());
 
 const limit = rateLimit({
-  max: 100,
+  max: 1000,
   windowMs: 60 * 60 * 1000,
   message: "Too many request from this IP. wait for 1 hour and try again",
 });
@@ -35,6 +35,8 @@ app.use(hpp());
 app.use(morgan("dev"));
 app.use(cookieParser());
 app.use("/api", limit);
+app.use(express.static("public"));
+// app.use("/public", express.static(`${__dirname}/public`));
 
 app.use("/api/v1/users", userRoute);
 app.use("/api/v1/tasks", taskRoute);

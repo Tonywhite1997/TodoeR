@@ -1,6 +1,7 @@
 const nodeMailer = require("nodemailer");
 const pug = require("pug");
 const { convert } = require("html-to-text");
+const path = require("path");
 
 class Email {
   constructor(user, url) {
@@ -24,12 +25,14 @@ class Email {
     }
   }
   async send(template, subject) {
-    //The HTML file location in the view route
-    const html = pug.renderFile(`${__dirname}/..view/email/${template}.pug`, {
+    // The HTML file location in the view route
+    const templatePath = path.join(__dirname, `../view/email/${template}.pug`);
+    const html = pug.renderFile(templatePath, {
       url: this.url,
       name: this.firstName,
       subject,
     });
+
     const emailOptions = {
       from: this.from,
       to: this.to,
@@ -42,6 +45,10 @@ class Email {
 
   async sendWelcome() {
     await this.send("welcome", "Welcome to the family");
+  }
+
+  async forgotPassword() {
+    await this.send("forgotPassword", "Forgot Password");
   }
 }
 

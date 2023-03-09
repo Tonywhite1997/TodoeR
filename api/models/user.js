@@ -35,12 +35,6 @@ const userSchema = mongoose.Schema(
       type: String,
       default: "default.jpg",
     },
-    images: [
-      {
-        type: String,
-        default: "default.jpg",
-      },
-    ],
     age: {
       type: Number,
       min: [18, "User can not be below 18 years of age"],
@@ -48,6 +42,7 @@ const userSchema = mongoose.Schema(
     },
     passwordResetToken: String,
     resetTokenExpiresIn: Date,
+    changedPasswordAt: Date,
     password: {
       type: String,
       required: [true, "Password field can not be empty"],
@@ -116,7 +111,6 @@ userSchema.methods.createPasswordResetToken = function () {
     .update(resetToken)
     .digest("hex");
   this.resetTokenExpiresIn = Date.now() + 10 * 60 * 1000;
-  console.log(resetToken);
   return resetToken;
 };
 
