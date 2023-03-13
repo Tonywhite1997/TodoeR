@@ -9,6 +9,7 @@ const handleDuplicateError = (err) => {
 const sendDevError = (err, res) => {
   res.status(err.statusCode).json({
     status: err.status,
+    code: err.code,
     message: err.message,
     error: err,
     stack: err.stack,
@@ -20,6 +21,7 @@ const sendProdError = (err, res) => {
   if (error.isOperational) {
     res.status(err.statusCode).json({
       status: err.status,
+      code: err.code,
       message: err.message,
     });
   } else {

@@ -275,7 +275,7 @@ exports.checkIfLoggedIn = async (req, res, next) => {
     status: "success",
     user,
   });
-  next();
+  // next();
 };
 
 exports.logout = (req, res, next) => {

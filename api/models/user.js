@@ -37,7 +37,7 @@ const userSchema = mongoose.Schema(
     },
     age: {
       type: Number,
-      min: [18, "User can not be below 18 years of age"],
+      min: [12, "User can not be below 12 years of age"],
       required: [true, "age is a must"],
     },
     passwordResetToken: String,
