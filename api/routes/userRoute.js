@@ -1,6 +1,7 @@
 const express = require("express");
 const authController = require("../controllers/authController");
 const userController = require("../controllers/userController");
+const contactController = require("../controllers/contactController");
 
 const router = express.Router();
 
@@ -9,6 +10,7 @@ router.post("/login", authController.login);
 router.get("/profile", authController.checkIfLoggedIn);
 router.post("/forgotPassword", authController.forgotPassword);
 router.patch("/resetPassword", authController.resetPassword);
+router.post("/contact-us", contactController.contactUs);
 
 //User must log in to access the routes below
 
